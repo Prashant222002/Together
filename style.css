@@ -49,3 +49,16 @@ button.gh{border:1.5px solid var(--bd)}.rps button{border:2px solid var(--bd);bo
 .mg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}.mg button{background:#fff;color:#3d1a52;border:2px solid var(--bd);box-shadow:0 3px 0 #f9cfe4;padding:8px 4px;border-radius:18px;font-size:13px;line-height:1.2}.mg button b{display:block;font-size:26px}.mg button.on{background:#effbf6;border-color:#2fbf86;box-shadow:0 3px 0 #2fbf86}
 #bd{position:fixed;inset:0;z-index:30;background:linear-gradient(160deg,#ffe0ef,#efe6ff);display:grid;place-items:center;text-align:center;padding:20px;overflow:hidden}#bd .bx{background:#fff;border:2px solid var(--bd);border-radius:30px;padding:22px 18px;max-width:380px;box-shadow:0 8px 0 #f9cfe4;position:relative;z-index:2}#bd h1{margin:6px 0;font-size:34px;color:#4a1560}.cf{position:absolute;top:-10%;font-size:26px;animation:fall 4s linear infinite;z-index:1}@keyframes fall{to{transform:translateY(120vh) rotate(360deg)}}
 .cdn{font-size:44px;font-weight:800;color:var(--pk);line-height:1}.code{font-size:22px;font-weight:800;letter-spacing:1px;text-align:center;background:#fff4fa;border:2px dashed var(--bd);border-radius:16px;padding:10px;word-break:break-all}
+
+/* ===== Native app feel ===== */
+html,body{overscroll-behavior:none;-webkit-text-size-adjust:100%}
+html{overscroll-behavior-y:none;touch-action:manipulation}
+body,body *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea,select{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;touch-action:manipulation;font-size:16px}
+img{-webkit-user-drag:none;user-drag:none;-webkit-touch-callout:none;pointer-events:none}
+button,[data-a],nav{cursor:default;touch-action:manipulation}
+a{-webkit-user-drag:none}
+@media(display-mode:standalone){body{-webkit-font-smoothing:antialiased}}
+#mo{position:fixed;inset:0;z-index:40;background:rgba(61,26,82,.55);display:grid;place-items:center;padding:20px;text-align:center;animation:mi .25s ease-out}
+#mo .bx{background:#fff;border:2px solid var(--bd);border-radius:30px;padding:22px 18px;max-width:380px;width:100%;box-shadow:0 8px 0 #f9cfe4}
+@keyframes mi{from{opacity:0;transform:scale(.94)}}

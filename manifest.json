@@ -1,5 +1,5 @@
 {
- "name": "TOGETHER \u00b7 Don & Billa",
+ "name": "TOGETHER · Don & Billa",
  "short_name": "TOGETHER",
  "start_url": "./",
  "scope": "./",
@@ -28,5 +28,11 @@
    "type": "image/png",
    "purpose": "maskable"
   }
+ ],
+ "id": "./",
+ "prefer_related_applications": false,
+ "categories": [
+  "lifestyle",
+  "social"
  ]
 }

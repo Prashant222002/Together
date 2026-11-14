@@ -1,9 +1,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Each couple has a secret code (TOGETHER-XXXXXXXX). Only that path is readable/writable.
     match /couples/{code}/p/{uid} {
-      allow read: if true;
-      allow write: if request.resource.size < 200000;
+      allow read: if code.matches('TOGETHER-[A-Z0-9]{8}');
+      allow create, update: if code.matches('TOGETHER-[A-Z0-9]{8}')
+                            && uid.matches('[a-z0-9]{4,30}')
+                            && request.resource.data.size() < 80;
+      allow delete: if false;
     }
   }
 }

@@ -36,19 +36,21 @@ const TZ="Asia/Kolkata";
 function now5(){const p=new Intl.DateTimeFormat("en-CA",{timeZone:TZ,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}).formatToParts(new Date()),g=t=>+p.find(x=>x.type===t).value;let m=g("hour")*60+g("minute"),d=new Date(g("year"),g("month")-1,g("day"));if(m<300){m+=1440;d.setDate(d.getDate()-1)}return{key:ks(d),m,d}}
 function weekKeys(){const{d}=now5(),w=(d.getDay()+6)%7;return[...Array(7)].map((_,i)=>{const x=new Date(d);x.setDate(d.getDate()-w+i);return ks(x)})}
 const me=()=>docs[uid],other=()=>Object.keys(docs).filter(k=>k!==uid).map(k=>[k,docs[k]])[0]||[null,null];
+const stOf=(d,k,q)=>d.st&&d.st[k]&&d.st[k][q.i],clOf=(d,k,q)=>d.days&&d.days[k]&&d.days[k][q.i];
+const fin=(d,k,q,N)=>{N=N||now5();return!!(clOf(d,k,q)||(stOf(d,k,q)&&(k<N.key||N.m>=q.e)))};
 const qs=(d,k)=>(T[d.tpl]||[]).concat((d.cq||[]).filter(q=>q.f<=k));
 function stats(id,d,o,keys){const N=now5();let xp=0,max=0,done=0,tot=0,vc=0,perfect=0;
- keys.filter(k=>k<=N.key).forEach(k=>{let all=true,cnt=0;qs(d,k).forEach(q=>{const ts=d.days&&d.days[k]&&d.days[k][q.i];if(k===N.key&&!ts&&N.m<=q.e)return;max+=q.x;tot++;cnt++;
-  if(ts){done++;xp+=(d.pts&&d.pts[k+"|"+q.i])||q.x;if(o&&o.v&&o.v[id+"|"+k+"|"+q.i])vc++}else all=false});if(all&&cnt)perfect++});
+ keys.filter(k=>k<=N.key).forEach(k=>{let all=true,cnt=0;qs(d,k).forEach(q=>{const ts=fin(d,k,q,N);if(k===N.key&&!ts&&N.m<=q.e)return;max+=q.x;tot++;cnt++;
+  if(ts){done++;if(clOf(d,k,q))xp+=(d.pts&&d.pts[k+"|"+q.i])||q.x;if(o&&o.v&&o.v[id+"|"+k+"|"+q.i])vc++}else all=false});if(all&&cnt)perfect++});
  return{xp,max,done,tot,vc,perfect,pct:tot?Math.round(done/tot*100):0}}
 function combos(d,o,keys){let c=0;if(o)keys.forEach(k=>M.forEach(q=>{if(d.mc&&d.mc[k]&&d.mc[k][q.i]&&o.mc&&o.mc[k]&&o.mc[k][q.i])c++}));return c}
 const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const GRACE=10,FLOOR=.25,award=(q,m)=>Math.round(q.x*(m<=q.s+GRACE?1:Math.max(FLOOR,(q.e-m)/(q.e-q.s))));
-const status=(d,k,q,m,K)=>d.days&&d.days[k]&&d.days[k][q.i]?((d.pts&&d.pts[k+"|"+q.i])<q.x?"late":"completed"):(k<K||m>q.e)?(k===K&&m-q.e<=60?"overdue":"skipped"):m>=q.s?"active":"upcoming";
+const status=(d,k,q,m,K)=>clOf(d,k,q)?"claimed":stOf(d,k,q)?((k<K||m>=q.e)?"claimable":"running"):(k<K||m>q.e)?"skipped":m>=q.s?"active":"upcoming";
 const lvl=x=>Math.floor(Math.sqrt(x/40))+1,lifeXp=d=>Object.values(d.pts||{}).reduce((a,b)=>a+b,0),dt=(a,k,m)=>a[(hs(k)+Math.floor(m/30))%a.length];
 const pk=(a,t)=>{const r=LS.get("tg_r_"+t)||[],c=a.filter(x=>!r.includes(x)),v=pick(c.length?c:a);LS.set("tg_r_"+t,[v].concat(r).slice(0,Math.min(3,a.length-1)));return v};
 const uni=(x,y)=>{if(x==null)return y;if(y==null)return x;if(typeof x==="object"&&typeof y==="object"&&!Array.isArray(x)&&!Array.isArray(y)){const r=Object.assign({},y);for(const k in x)r[k]=uni(x[k],y[k]);return r}return typeof x==="number"&&typeof y==="number"?Math.min(x,y):x};
-const mergeOwn=(l,r)=>{const x=uni(l,r);["pn","msg","mood","rx","seen","log","notes","wish","cq","lc","shop","gv","fo","eq","fl","fc"].forEach(f=>{if(l[f]!==undefined)x[f]=l[f]});return x};
+const mergeOwn=(l,r)=>{const x=uni(l,r);["pn","msg","mood","rx","seen","log","notes","wish","cq","lc","shop","gv","fo","eq","fl","fc","ak"].forEach(f=>{if(l[f]!==undefined)x[f]=l[f]});return x};
 async function save(){const d=me();LS.set("tg_"+uid,d);if(!db)return;try{await db.doc("p/"+uid).set(JSON.parse(JSON.stringify(d)));LS.set("tg_dirty",0)}catch(e){LS.set("tg_dirty",1);toast("Saved on phone, will sync when online ☁️")}}
 const flush=()=>{if(LS.get("tg_dirty")&&me())save()};addEventListener("online",flush);setInterval(flush,30000);
 const LC=x=>{const c=x.lc||{},r={t:0,c:0,k:0};for(const e in c){const v=Math.min(c[e],3),t=e.split("|r")[1];if(t==="0")r.t+=v;if(t==="1")r.c+=v;if(t==="2")r.k+=v}r.n=Object.values(x.notes||{}).filter(Boolean).length;return r};
@@ -57,7 +59,7 @@ function lovePts(d,o){return lp(LC(d))+(o?lp(LC(o)):0)+combos(d,o,allK(d,o))*10}
 const lane=(x,s)=>'<div class="row" style="font-size:13px"><b class="g">'+esc(x.name)+'</b><b>'+s.pct+'%</b></div><div style="position:relative;height:46px;border-bottom:3px dashed var(--ln)"><img class="deco" style="position:absolute;bottom:2px;width:40px;height:40px;transition:left .6s;left:calc((100% - 74px)*'+s.pct/100+')" src="'+av(x)+'" alt=""><span style="position:absolute;right:0;bottom:4px;font-size:26px">💗</span></div>';
 function race(d,o,a,b){let t="";if(o){const df=a.pct-b.pct,w=df>0?d:o,l=df>0?o:d;t=df===0?"Tied, perfect pair! 💞":esc(w.name)+" is a little ahead, "+esc(l.name)+" is just one quest away. The team wins 💪"}
  return'<div class="card"><div class="ct">'+si("captain")+' Love Race 🏁</div>'+lane(d,a)+(o?lane(o,b):'<div class="sub">Waiting for your partner to join…</div>')+'<div class="sub c">'+t+'</div></div>'}
-function badges(d,o){const ps=Object.keys(d.pts||{}),st=stats(uid,d,o,Object.keys(d.days||{})),L=LC(d),cb=combos(d,o,allK(d,o)),dv=Object.values(d.days||{});
+function badges(d,o){const ps=Object.keys(Object.assign({},d.pts,d.pp)),st=stats(uid,d,o,Object.keys(Object.assign({},d.days,d.st))),L=LC(d),cb=combos(d,o,allK(d,o)),dv=Object.keys(Object.assign({},d.days,d.st)).map(k=>Object.assign({},(d.days||{})[k],(d.st||{})[k]));
  return[["star","First Tick","Finish 1 quest",ps.length>=1],["tota","Early Bird","Morning quest x3",dv.filter(x=>x.a1||x.b1).length>=3],["captain","Perfect Day","All quests in a day",st.perfect>=1],["dumbbell","Gym Hero","Gym x3",dv.filter(x=>x.a3).length>=3],["pinky","Love Letters","3 love notes",L.n>=3],["rose","Combo Couple","3 combos together",cb>=3]]}
 function vUs(){const[,o]=other(),d=me(),lv=lovePts(d,o),B2=badges(d,o);
  return vUs0()+'<div class="card"><div class="ch"><b style="font-size:18px">'+si("pinky")+' Love Meter</b><span class="tag">Level '+(Math.floor(lv/30)+1)+'</span></div><div class="bar t" style="margin:8px 0"><i style="width:'+(lv%30)/30*100+'%"></i></div><div class="sub">'+lv+' love pts · next level at '+(Math.floor(lv/30)+1)*30+'</div></div>'
@@ -69,12 +71,25 @@ function vFun(){const[,o]=other(),d=me(),a=LC(d),b=o?LC(o):null,cb=combos(d,o,al
  const s0=vFun0(),i=s0.indexOf('<div class="card">');return s0.slice(0,i)+c+msgCard()+s0.slice(i)}
 function toast(t){const e=$("#ts");e.textContent=t;e.className="on";clearTimeout(toast.t);toast.t=setTimeout(()=>e.className="",3200)}
 function pop(){for(let i=0;i<14;i++){const s=document.createElement("span");s.innerHTML='<img src="'+S[["star","teddy","chick","bunny","billi","rose"][i%6]]+'" style="width:44px;border-radius:12px">';s.className="fx";s.style.left=(8+Math.random()*80)+"vw";s.style.animationDelay=Math.random()*.4+"s";document.body.appendChild(s);setTimeout(()=>s.remove(),2300)}}
+const PWH={A:"7a30eb60bb9a43bfd7484e880554bf26d60671063303e22dfe4066c8d5a34b2e",B:"8878832f28f6bbbbcb8c109e51ad426ca830de37bd30da2b516423ae407886d2"};
+const sha=async x=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode("tg|"+x)))].map(b=>b.toString(16).padStart(2,"0")).join("");
+async function gate(p){if(LS.get("tg_ok_"+p))return 1;const n=LS.get("tg_try")||{c:0,u:0};if(Date.now()<n.u){toast("Too many wrong tries. Wait 5 minutes 🔒");return 0}
+ const v=prompt("Password for "+TT[p].n+" 🔐");if(v==null)return 0;if(await sha(v.trim())===PWH[p]){LS.set("tg_ok_"+p,1);LS.set("tg_try",{c:0,u:0});return 1}
+ n.c++;if(n.c>=5){n.u=Date.now()+3e5;n.c=0}LS.set("tg_try",n);toast("Wrong password ❌");return 0}
 const A={
- tab(p){tab=p;render()},
- async ci(id){const{key,m}=now5(),d=me(),q=qs(d,key).find(x=>x.i===id);if(!q||m<q.s||m>q.e)return;d.days=d.days||{};d.days[key]=d.days[key]||{};if(d.days[key][id])return;d.days[key][id]=Date.now();const pt=award(q,m);d.pts=d.pts||{};d.pts[key+"|"+id]=pt;d.log=(d.log||[]).concat([{t:Date.now(),n:q.n,p:pt}]).slice(-20);d.seen=Date.now();pop();toast(pick(CHEER.concat(CH2[d.tpl]))+" +"+pt+" 🍓");await save()},
+ tab(p){if(p==="home"&&tab==="set"&&history.state&&history.state.t==="set"){history.back();return}
+  if(p==="set")history.pushState({t:"set"},"");else history.replaceState({t:p},"");tab=p;render();scrollTo(0,0)},
+ async ci(id){const{key,m}=now5(),d=me(),q=qs(d,key).find(x=>x.i===id);if(!q||m<q.s||m>q.e)return toast("This quest is not open right now");if(stOf(d,key,q)||clOf(d,key,q))return;
+  d.st=d.st||{};d.st[key]=d.st[key]||{};d.st[key][id]=Date.now();const pt=award(q,m);d.pp=d.pp||{};d.pp[key+"|"+id]=pt;
+  d.log=(d.log||[]).concat([{t:Date.now(),n:q.n,p:0,s:1}]).slice(-20);d.seen=Date.now();pop();toast("Started ▶ "+q.n+". Reward unlocks at "+hm(q.e)+" and stays claimable anytime 🍓");await save();render()},
+ async cl(p){const[k,id]=String(p).split("|"),d=me(),N=now5(),q=qs(d,k).find(x=>x.i===id);if(!q||!stOf(d,k,q)||clOf(d,k,q))return;if(k===N.key&&N.m<q.e)return toast("Still running, reward unlocks at "+hm(q.e)+" ⏳");
+  const pt=(d.pp&&d.pp[k+"|"+id])||award(q,q.s);d.days=d.days||{};d.days[k]=d.days[k]||{};d.days[k][id]=Date.now();d.pts=d.pts||{};d.pts[k+"|"+id]=pt;
+  d.log=(d.log||[]).concat([{t:Date.now(),n:q.n,p:pt}]).slice(-20);d.seen=Date.now();pop();toast(pick(CHEER.concat(CH2[d.tpl]))+" +"+pt+" 🍓");await save();render()},
+ async cla(){const d=me(),N=now5();let n=0,tp=0;pend2(d).forEach(r=>{const pt=(d.pp&&d.pp[r.k+"|"+r.q.i])||award(r.q,r.q.s);d.days=d.days||{};d.days[r.k]=d.days[r.k]||{};d.days[r.k][r.q.i]=Date.now();d.pts=d.pts||{};d.pts[r.k+"|"+r.q.i]=pt;n++;tp+=pt});
+  if(!n)return;d.log=(d.log||[]).concat([{t:Date.now(),n:n+" quests",p:tp}]).slice(-20);pop();toast("Claimed "+n+" rewards +"+tp+" 🍓");await save();render()},
  async vo(p){const d=me();d.v=d.v||{};d.v[p]=1;toast("Vouched! ❤");await save()},
  async mc(id){if(id==="m6")return toast("Finish 25 min in the Focus Room, it ticks by itself 🎯");const{key,m}=now5(),q=M.find(x=>x.i===id),d=me();if(!q||m<q.s||m>q.e+30)return;d.mc=d.mc||{};d.mc[key]=d.mc[key]||{};if(d.mc[key][id])return;d.mc[key][id]=Date.now();pop();toast("Waiting for your partner for the combo… 💞");await save()},
- async join(p){docs[uid]={name:TT[p].n,tpl:p,days:{},v:{},notes:{},wish:{},cq:[],mc:{},box:{}};await save();render()},
+ async join(p){if(!(await gate(p)))return;if(Object.values(docs).some(z=>z.tpl===p))return toast("Already joined, use ‘This is me’");docs[uid]={name:TT[p].n,tpl:p,days:{},v:{},notes:{},wish:{},cq:[],mc:{},box:{}};await save();render()},
  async note(){const d=me();d.notes=d.notes||{};d.notes[now5().key]=$("#nt").value.slice(0,140);await save();document.activeElement.blur();toast("Note sent 💌");render()},
  async wish(p){const d=me();d.wish=d.wish||{};d.wish[p]=$("#ws").value.slice(0,120);await save();document.activeElement.blur();render()},
  async box(p){const d=me();d.box=d.box||{};d.box[p]=Date.now();pop();await save()},
@@ -98,12 +113,15 @@ const A={
 document.addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(b&&A[b.dataset.a])A[b.dataset.a](b.dataset.p)});
 const B=(a,t,p,c)=>'<button data-a="'+a+'"'+(p!=null?' data-p="'+esc(p)+'"':"")+(c?' class="'+c+'"':"")+'>'+t+'</button>';
 function cur(d,key,m){const c=qs(d,key).filter(q=>m>=q.s&&m<=q.e);return c.length?esc(c[c.length-1].n):"Free time 😌"}
-function nextCard(d,key,m){const L=qs(d,key),ts=q=>d.days&&d.days[key]&&d.days[key][q.i],q=L.find(x=>!ts(x)&&m>=x.s&&m<=x.e)||L.filter(x=>!ts(x)&&x.s>m).sort((a,b)=>a.s-b.s)[0];
+function nextCard(d,key,m){const L=qs(d,key),ts=q=>stOf(d,key,q)||clOf(d,key,q),q=L.find(x=>!ts(x)&&m>=x.s&&m<=x.e)||L.filter(x=>!ts(x)&&x.s>m).sort((a,b)=>a.s-b.s)[0];
  if(!q){ctd=null;return'<div class="card nx"><div class="nt">All quests done today!</div></div>'}
  const live=m>=q.s,t=(live?q.e:q.s)-m;ctd=Date.now()+t*60000-new Date().getSeconds()*1000;
  return'<div class="card nx"><div class="row" style="justify-content:center">'+si("tota","big")+'<div class="nt">'+(live?"Ends soon":"Next Task")+'<br>'+esc(q.n)+'</div></div><div class="cd" id="cd">00:00:00</div></div>'}
 
-const dayPct=(d,k)=>{const L=qs(d,k),n=L.filter(q=>d.days&&d.days[k]&&d.days[k][q.i]).length;return L.length?n/L.length:0};
+const dayPct=(d,k)=>{const N=now5(),L=qs(d,k),n=L.filter(q=>fin(d,k,q,N)).length;return L.length?n/L.length:0};
+function pend2(d){const N=now5(),r=[];Object.keys(d.st||{}).sort().forEach(k=>qs(d,k).forEach(q=>{if(stOf(d,k,q)&&!clOf(d,k,q)&&(k<N.key||N.m>=q.e))r.push({k,q,pt:(d.pp&&d.pp[k+"|"+q.i])||award(q,q.s)})}));return r}
+function claimCard(d){const L=pend2(d);if(!L.length)return"";const tot=L.reduce((a,r)=>a+r.pt,0),dn=k=>k===now5().key?"today":k.slice(5);
+ return'<h3>'+si("star")+' Rewards to claim</h3><div class="card"><div class="sub">Quest finished, reward is waiting. Claim it anytime, it never expires 🍓</div>'+L.map(r=>'<div class="q"><span class="ic">'+qi(r.q.n)+'</span><div class="g"><b>'+esc(r.q.n)+'</b><small>'+dn(r.k)+' · ended '+hm(r.q.e)+'</small></div>'+B("cl",'Claim +'+r.pt+' 🍓',r.k+"|"+r.q.i,"alt")+'</div>').join("")+(L.length>1?'<br>'+B("cla","Claim all +"+tot+" 🍓","","wide"):"")+'</div>'}
 const ago=t=>{const x=Math.floor((Date.now()-t)/60000);return x<1?"just now":x<60?x+" min ago":Math.floor(x/60)+"h ago"};
 const pres=x=>x.seen&&Date.now()-x.seen<360000?'<span style="color:#2fbf86">● online now</span>':(x.seen?"seen "+ago(x.seen):"not opened yet");
 const CHAR=[[/gym/i,"dumbbell","Gym Bro",["No excuses, champ! Weights won’t lift themselves 💪","One more set, then send a photo to Don/Billa!"]],[/medit/i,"panda","Rinku Panda",["Breathe in, tension out. Start calmly 🧘"]],[/library|study|topic|class|college/i,"prof","Professor Pappu",["Focus tip: study 25 min, stretch 5 min.","Phone side me, notes saamne. Topper mode ON!","Study now, or your name will only guest-star in the results!"]],[/sleep|night/i,"ghost","Pappu Ghost",["Phone rakh do, sapno me bhi discipline rakhna!","It’s night, Pappu Ghost is watching 👻"]],[/lunch|dinner|food/i,"dada","Motu Dada",["Eat on time! Nobody studies on an empty stomach.","Eat your paneer, become the protein Don/Billa!"]],[/rest|snack|break/i,"nap","Nap Queen",["A little rest matters too. Break = game with Bunny?"]],[/wake|brush/i,"tota","Tinku Parrot",["Wake up, even the sun has marked its attendance!","The parrot says: wake up, wake up!"]]];
@@ -112,13 +130,14 @@ const LATE=["Even the timer is about to retire… just one tap!","The task is wa
 const isBreak=(d,k,m)=>{const a=qs(d,k).filter(q=>m>=q.s&&m<=q.e&&!(d.days&&d.days[k]&&d.days[k][q.i]));return!a.length||a.every(q=>/rest|snack|break|lunch|dinner/i.test(q.n))};
 const brkNow=()=>{const{key,m}=now5();return isBreak(me(),key,m)};
 function lockCard(d,key,m){const q=qs(d,key).filter(x=>m>=x.s&&m<=x.e&&!(d.days&&d.days[key]&&d.days[key][x.i]))[0];return'<div class="card c brain">'+si("prof","big")+'<div class="bq">Focus time! Mini-games open at break time.</div><div class="sub">Finish “'+esc(q?q.n:"your quest")+'” first. Professor Pappu is watching.</div></div>'}
-function brainCard(d,o,a,b,key,m){const L=qs(d,key),ts=q=>d.days&&d.days[key]&&d.days[key][q.i],cards=[];
+function brainCard(d,o,a,b,key,m){const L=qs(d,key),ts=q=>stOf(d,key,q)||clOf(d,key,q),cards=[];
  const bx=(k,who,tone,msg,act)=>cards.push('<div class="card brain"><div class="row">'+si(k,"big")+'<div class="g"><small class="sub">'+who+' · '+tone+'</small><div class="bq">'+msg+'</div></div></div>'+(act||"")+'</div>');
  const both=o&&dayPct(d,key)>=.8&&dayPct(o,key)>=.8;
  if(both)bx("star","Bittu Star","Team win","Both of you crushed it! Surprise Box unlocked. History was made today!",B("tab","Open Together","us","wide"));
- const act=L.filter(q=>!ts(q)&&m>=q.s&&m<=q.e).sort((x,y)=>x.e-y.e),q=act[0],up=L.filter(q=>!ts(q)&&q.s>m&&q.s-m<=15).sort((x,y)=>x.s-y.s)[0];
+ const rn0=L.filter(x=>stOf(d,key,x)&&!clOf(d,key,x)&&m<x.e).sort((x,y)=>x.e-y.e)[0],act=L.filter(q=>!ts(q)&&m>=q.s&&m<=q.e).sort((x,y)=>x.e-y.e),q=act[0],up=L.filter(q=>!ts(q)&&q.s>m&&q.s-m<=15).sort((x,y)=>x.s-y.s)[0];
  if(q){const c=charFor(q.n),late=m>q.s+10,ln=late?LATE[(hs(key+q.i)+Math.floor(m/15))%LATE.length]:c[3][(hs(key+q.i)+Math.floor(m/15))%c[3].length],pt=award(q,m);
-  bx(late?"billi":c[1],late?"Munni Billi":c[2],late?"Gentle nudge":"Now: "+esc(q.n),ln,B("ci","Start ▶ +"+pt+" 🍓",q.i,"wide"))}
+  bx(late?"billi":c[1],late?"Munni Billi":c[2],late?"Gentle nudge":"Now: "+esc(q.n),ln+'<br><small class="sub">Tap Start, or it counts as skipped when the window closes at '+hm(q.e)+'.</small>',B("ci","Start ▶ up to +"+pt+" 🍓",q.i,"wide"))}
+ else if(rn0){const c=charFor(rn0.n);bx(c[1],c[2],"Running ▶ "+esc(rn0.n),"In progress, stay on it! Reward unlocks at "+hm(rn0.e)+" ⏳")}
  else if(up){const c=charFor(up.n);bx(c[1],c[2],"Starting soon",esc(up.n)+" starts in "+(up.s-m)+" min. "+c[3][hs(key+up.i)%c[3].length])}
  else if(m>=1350&&!L.every(ts)&&L.some(x=>/sleep|night/i.test(x.n)&&!ts(x)))bx("ghost","Pappu Ghost","Night reminder","Wind down time. Phone aside, aim for 7 hours of sleep!");
  else if(isBreak(d,key,m)&&!both)bx("bunny","Bunty Bunny","Break time","Free time! Quick game? Productivity returns later.",B("tab","Play a game","fun","wide"));
@@ -128,8 +147,8 @@ function brainCard(d,o,a,b,key,m){const L=qs(d,key),ts=q=>d.days&&d.days[key]&&d
   else bx("captain","Captain Couple","Perfect tie","Teammates forever. Together!")}
  if(L.filter(q=>!ts(q)&&m>q.e).length>=3&&!both)bx("panda","Rinku Panda","Tough day?","It’s okay. One small step more, tomorrow is a new day 💛");
  return cards.slice(0,3).join("")}
-function feedCard(d,o){const f=[d,o].filter(Boolean).flatMap(x=>(x.log||[]).map(e=>({t:e.t,n:e.n,p:e.p,w:x}))).sort((p,q)=>q.t-p.t).slice(0,5);if(!f.length)return"";
- return'<h3>'+si("tota")+' Live Feed</h3><div class="card">'+f.map(e=>'<div class="q"><span class="ic">'+qi(e.n)+'</span><div class="g"><b>'+esc(e.w.name)+' finished '+esc(e.n)+'</b><small>'+ago(e.t)+'</small></div><span class="xp">+'+e.p+' 🍓</span></div>').join("")+'</div>'}
+function feedCard(d,o){const f=[d,o].filter(Boolean).flatMap(x=>(x.log||[]).map(e=>({t:e.t,n:e.n,p:e.p,s:e.s,w:x}))).sort((p,q)=>q.t-p.t).slice(0,5);if(!f.length)return"";
+ return'<h3>'+si("tota")+' Live Feed</h3><div class="card">'+f.map(e=>'<div class="q"><span class="ic">'+qi(e.n)+'</span><div class="g"><b>'+esc(e.w.name)+(e.s?' started ▶ ':e.p?' claimed ':' finished ')+esc(e.n)+'</b><small>'+ago(e.t)+'</small></div>'+(e.p?'<span class="xp">+'+e.p+' 🍓</span>':'')+'</div>').join("")+'</div>'}
 function touch(){const d=me();if(d&&document.visibilityState!=="hidden"&&(!d.seen||Date.now()-d.seen>240000)){d.seen=Date.now();save()}}
 function render(){if(!ready)return;const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)&&me())return;const app=$("#app"),nav=$("#nav");
   if(!code){nav.hidden=true;app.innerHTML=vStart();return}
@@ -147,31 +166,36 @@ function vHome(){const{key,m}=now5(),d=me(),[oid,o]=other(),keys=weekKeys(),a=st
  const lead=o&&a.pct!==b.pct?(a.pct>b.pct?[d,o]:[o,d]):null;
  let h=(db?"":'<div class="bub">☁️ Cloud sync is not connected yet. Your data is saved on this phone.</div>')+'<div class="hm"><button class="gear" data-a="tab" data-p="set" aria-label="Settings">⚙️</button><h1>TOGETHER <span>♡</span></h1><small>Don &amp; Billa Edition · Hi, '+esc(d.name)+'!</small></div><div class="hero2"><img src="'+S.chibi+'" alt=""><span class="pill">Love and Study, together! ♡</span></div>';
  h+='<div class="pl">'+P(d,a,"",lead&&lead[0]===d)+(o?P(o,b," o",lead&&lead[0]===o):'<div class="p o c"><div class="pc">?</div><small>Waiting for your partner to join</small></div>')+'</div>';
- h+=live(d,o,a,b,key,m,oid);if(o&&o.fl&&Date.now()-o.fl.ts<864e5)h+='<div class="bub">'+esc(o.name)+" flex: "+esc(o.fl.t)+" 😎</div>";h+=brainCard(d,o,a,b,key,m);h+=msgBanner(d,o)+moodCard(d,o)+bdayCard(d)+race(d,o,a,b);h+=winCard(d,o);h+='<div class="ms"><span class="e">'+si("star","big")+'</span><div class="g"><b>Today’s Mission</b>Both reach 80% of today’s quests to unlock the Surprise Box ('+Math.round(dayPct(d,key)*100)+'% · '+(o?Math.round(dayPct(o,key)*100)+'%':'–')+')</div><span class="ar">›</span></div><div class="row" style="margin-bottom:12px">'+si("billi","big")+'<div class="bub g" style="margin:0">“'+FUN2[hs(key)%FUN2.length]+'”</div></div>';
+ h+=live(d,o,a,b,key,m,oid);if(o&&o.fl&&Date.now()-o.fl.ts<864e5)h+='<div class="bub">'+esc(o.name)+" flex: "+esc(o.fl.t)+" 😎</div>";h+=brainCard(d,o,a,b,key,m)+claimCard(d);h+=msgBanner(d,o)+moodCard(d,o)+bdayCard(d)+race(d,o,a,b);h+=winCard(d,o);h+='<div class="ms"><span class="e">'+si("star","big")+'</span><div class="g"><b>Today’s Mission</b>Both reach 80% of today’s quests to unlock the Surprise Box ('+Math.round(dayPct(d,key)*100)+'% · '+(o?Math.round(dayPct(o,key)*100)+'%':'–')+')</div><span class="ar">›</span></div><div class="row" style="margin-bottom:12px">'+si("billi","big")+'<div class="bub g" style="margin:0">“'+FUN2[hs(key)%FUN2.length]+'”</div></div>';
  h+=feedCard(d,o);h+='<h3>'+si("calc")+' Live Progress <span style="color:#ff3b6b">●</span></h3>';
  [[d,a,""],[o,b," o"]].forEach(r=>{if(!r[0])return;h+='<div class="card"><div class="row"><img class="deco" style="width:58px;height:58px" src="'+av(r[0])+'" alt=""><div class="g"><div class="row"><b class="g" style="font-size:19px">'+esc(r[0].name)+'</b><span class="big">'+r[1].pct+'%</span></div><div class="sub">On: '+cur(r[0],key,m)+'</div><div class="bar'+(r[2]?" b":"")+'"><i style="width:'+r[1].pct+'%"></i></div></div></div></div>'});
  if(o){h+='<div class="bub" style="background:linear-gradient(135deg,#fff,#fff0d8)"><b>'+si("chick")+' Who’s Ahead? '+(lead?esc(lead[0].name)+" is ahead!":"It’s a tie!")+'</b><br>'+(lead?TT[lead[0].tpl].lead.replace("{l}",esc(lead[1].name)):"Don and Billa, both hardworking 😍")+'</div><div class="row">'+B("rx",si("trouble")+" Taunt","0","gh g")+B("rx",si("teddy")+" Cheer","1","gh g")+B("rx",si("pinky")+" Kiss","2","gh g")+'</div>';
   if(o.rx&&Date.now()-o.rx.t<216e5)h+='<p class="bub" style="margin-top:10px">'+nm(o)+' sent: '+RX[o.rx.k][o.tpl]+'</p>'}
- const pend=[];if(o){const y=new Date(now5().d);y.setDate(y.getDate()-1);[key,ks(y)].forEach(k=>qs(o,k).forEach(q=>{const ts=o.days&&o.days[k]&&o.days[k][q.i],id=oid+"|"+k+"|"+q.i;if(ts&&!(d.v&&d.v[id]))pend.push([id,q,ts])}))}
+ const pend=[];if(o){const y=new Date(now5().d);y.setDate(y.getDate()-1);[key,ks(y)].forEach(k=>qs(o,k).forEach(q=>{const ts=clOf(o,k,q)||stOf(o,k,q),id=oid+"|"+k+"|"+q.i;if(ts&&fin(o,k,q)&&!(d.v&&d.v[id]))pend.push([id,q,ts])}))}
  if(pend.length){h+='<h3>'+si("pinky")+' '+esc(o.name)+' needs your vouch</h3><div class="card">';pend.forEach(p=>{h+='<div class="q"><span class="ic">'+qi(p[1].n)+'</span><div class="g"><b>'+esc(p[1].n)+'</b><small>'+new Date(p[2]).toLocaleString([],{weekday:"short",hour:"numeric",minute:"2-digit"})+'</small></div>'+B("vo","I saw it ✓",p[0],"alt")+'</div>'});h+='</div>'}
  h+='<h3>'+si("calc")+' Weekly report</h3><div class="card"><table><tr><th></th><th>'+esc(d.name)+'</th>'+(o?'<th>'+esc(o.name)+'</th>':"")+'</tr>';
  [["Score",s=>s.pct+"%"],["Strawberries 🍓",s=>s.xp],["Quests",s=>s.done+"/"+s.tot],["Verified ✓",s=>s.done?Math.round(s.vc/s.done*100)+"%":"–"],["Perfect days",s=>s.perfect]].forEach(r=>{h+='<tr><td>'+r[0]+'</td><td>'+r[1](a)+'</td>'+(o?'<td>'+r[1](b)+'</td>':"")+'</tr>'});h+='</table>';
  if(o){const wk=keys[0],L=a.pct===b.pct?null:a.pct>b.pct?[uid,d,o]:[oid,o,d];h+='<div class="big">'+(L?si("star")+" "+esc(L[1].name):si("captain")+" Tie")+'</div><div class="sub">'+(L?esc(L[2].name)+" owes a sweet wish 😄":"You both win!")+'</div>';
   if(L&&L[0]===uid)h+='<textarea id="ws" rows="2" maxlength="120" placeholder="Winner’s wish…">'+esc(d.wish&&d.wish[wk]||"")+'</textarea><br><br>'+B("wish","Save wish",wk);else if(L&&L[1].wish&&L[1].wish[wk])h+='<p class="bub">'+esc(L[1].wish[wk])+'</p>'}
  return h+'</div><div class="card sub row">'+si("prof","big")+'<div><b>Fair play:</b> a quest opens only in its time window, can’t be undone, your partner can’t edit your data, and your partner’s confirmation adds a verified ✓ to your quests.</div></div>'}
-function vRt(){const s0=vRt0(),i=s0.indexOf('<div class="card">');return s0.slice(0,i)+focusCard()+s0.slice(i)}
+function vRt(){const s0=vRt0(),i=s0.indexOf('<div class="card">');return s0.slice(0,i)+focusCard()+(rv==="other"?"":claimCard(me()))+s0.slice(i)}
 function vRt0(){const{key,m}=now5(),d=me(),[oid,o]=other(),v=rv==="other"&&o?o:d,mine=v===d;
  let h=hd("Routine","notebook")+seg("rvw",[["me",esc(d.name)],["other",o?esc(o.name):"Partner"]],mine?"me":"other")+'<div class="card">';
- qs(v,key).forEach(q=>{const ts=v.days&&v.days[key]&&v.days[key][q.i],s=hm(q.s)+" – "+hm(q.e);let c="lock",act='<span class="ck"></span>';
-  if(ts){c="done";act='<span class="ck d">✓</span>'}else if(m>q.e){c="miss";act='<span class="ck">✕</span>'}else if(m>=q.s&&mine){c="";act='<button class="ck go" data-a="ci" data-p="'+q.i+'">▶</button>'}else if(m>=q.s)act='<span class="ck go">▶</span>';
-  h+='<div class="q '+c+'"><span class="ic">'+qi(q.n)+'</span><div class="g"><b>'+esc(q.n)+'</b><small>'+s+(ts&&(mine?(o&&o.v&&o.v[uid+"|"+key+"|"+q.i]):(d.v&&d.v[oid+"|"+key+"|"+q.i]))?" · verified ✓":"")+(c==="miss"?" · skipped, no stress":"")+'</small></div><span class="xp">+'+((ts&&v.pts&&v.pts[key+"|"+q.i])||q.x)+' 🍓</span>'+act+'</div>'});
+ qs(v,key).forEach(q=>{const cl=clOf(v,key,q),sd=stOf(v,key,q),ts=cl||(sd&&m>=q.e),s=hm(q.s)+" – "+hm(q.e);let c="lock",act='<span class="ck"></span>',note="",pt=(cl&&v.pts&&v.pts[key+"|"+q.i])||(v.pp&&v.pp[key+"|"+q.i])||q.x;
+  if(cl){c="done";act='<span class="ck d">✓</span>'}
+  else if(sd&&m>=q.e){c="done";act=mine?'<button class="alt" data-a="cl" data-p="'+key+"|"+q.i+'" style="padding:6px 12px;font-size:13px">Claim</button>':'<span class="ck d">✓</span>';note=" · finished, "+(mine?"claim your reward":"reward not claimed yet")}
+  else if(sd){c="";act='<span class="ck go">⏳</span>';note=" · running, reward at "+hm(q.e)}
+  else if(m>q.e){c="miss";act='<span class="ck">✕</span>';note=" · skipped, no stress"}
+  else if(m>=q.s&&mine){c="";act='<button class="ck go" data-a="ci" data-p="'+q.i+'">▶</button>';note=" · tap ▶ to start"}
+  else if(m>=q.s){act='<span class="ck go">▶</span>';note=" · open now"}
+  h+='<div class="q '+c+'"><span class="ic">'+qi(q.n)+'</span><div class="g"><b>'+esc(q.n)+'</b><small>'+s+(ts&&(mine?(o&&o.v&&o.v[uid+"|"+key+"|"+q.i]):(d.v&&d.v[oid+"|"+key+"|"+q.i]))?" · verified ✓":"")+note+'</small></div><span class="xp">+'+pt+' 🍓</span>'+act+'</div>'});
  h+='</div>'+nextCard(v,key,m);
  if(mine)h+='<h3>'+si("notebook")+' New quest (from tomorrow)</h3><div class="card"><input id="qn" maxlength="30" placeholder="Quest name (e.g. Revision)"><br><br><div class="row"><input id="qs" type="time"><input id="qe" type="time"><select id="qx"><option>10</option><option selected>15</option><option>30</option><option>50</option></select></div><br>'+B("add","Add quest")+'</div>';
  return h}
 function vUs0(){const{key,m}=now5(),d=me(),[oid,o]=other(),keys=weekKeys(),a=stats(uid,d,o,keys),b=o?stats(oid,o,d,keys):null,cb=combos(d,o,keys),t=o?Math.round((a.pct+b.pct)/2):0,wk=keys[0];
  let h=hd("Together","unicorn")+'<img class="ph" style="margin-bottom:10px;max-height:150px;object-fit:cover" src="'+S.hands+'" alt="">'+'<div class="card c"><div class="ct">'+si("captain")+' Couple Missions</div><div class="sub" style="margin-bottom:6px">Complete them together for COMBO bonus!</div>';
  M.forEach(q=>{const x=d.mc&&d.mc[key]&&d.mc[key][q.i],y=o&&o.mc&&o.mc[key]&&o.mc[key][q.i];
-  const act=x?'<span class="xp">'+(y?"COMBO +20":"waiting…")+'</span>':(m>=q.s&&m<=q.e+30?B("mc","Done",q.i):'<span class="tag">'+hm(q.s)+'</span>');
+  const act=x?'<span class="xp">'+(y?"COMBO +20":"waiting…")+'</span>':(m>=q.s&&m<=q.e+30?B("mc","Done"):'<span class="tag">'+hm(q.s)+'</span>');
   h+='<div class="q" style="text-align:left"><span class="ck '+(x&&y?"d":"")+'">'+(x&&y?"✓":"")+'</span><div class="g"><b style="font-size:15px">'+q.n+'</b><small>you '+(x?"✓":"○")+' · '+(o?esc(o.name):"partner")+' '+(y?"✓":"○")+'</small></div>'+act+'</div>'});
  h+='</div><div class="ms"><span class="e">'+si("captain","big")+'</span><b class="g">Couple Streak</b><b>'+Math.min(a.perfect,b?b.perfect:0)+' Days</b></div>';
  h+='<div class="card"><div class="ch"><b style="font-size:18px">'+si("rose")+' Our Garden</b><span class="tag">'+cb+' combos</span></div><img class="ph" style="margin:8px 0;max-height:150px;object-fit:cover" src="'+S.garden+'" alt=""><div class="bar t"><i style="width:'+Math.max(5,t)+'%"></i></div><div class="sub">Team score '+t+'% · grow it together!</div></div>';
@@ -191,7 +215,7 @@ function vFun0(){if(!mg.e)newMg();const{key,m}=now5(),d=me(),[oid,o]=other(),key
 const focB=l=>Math.floor(Math.min(l.reduce((a,x)=>a+x.m,0),60)/5),recv=o=>o?(o.gv||[]).reduce((a,x)=>a+x.g,0):0,spent=d=>(d.shop||[]).concat(d.gv||[]).reduce((a,x)=>a+x.c,0),earn=(d,o)=>lifeXp(d)+combos(d,o,allK(d,o))*20+Object.values(d.fc||{}).reduce((a,l)=>a+focB(l),0),bal=(d,o)=>earn(d,o)+recv(o)-spent(d);
 const dkeys=(a,b)=>{const r=[];for(let x=new Date(a+"T00:00:00");ks(x)<=b;x.setDate(x.getDate()+1))r.push(ks(x));return r};
 const wn=k=>{const[oid,o]=other(),d=me();if(!o)return null;const a=stats(uid,d,o,k),b=stats(oid,o,d,k);return{a,b,w:a.tot+b.tot===0?0:a.pct===b.pct?"=":a.pct>b.pct?"a":"b"}};
-function winCard(d,o){const{key}=now5(),all=Object.keys(d.days||{}).concat(o?Object.keys(o.days||{}):[]).concat([key]).sort(),yr=dkeys(all[0],key);
+function winCard(d,o){const{key}=now5(),all=Object.keys(d.days||{}).concat(Object.keys(d.st||{}),o?Object.keys(o.days||{}).concat(Object.keys(o.st||{})):[]).concat([key]).sort(),yr=dkeys(all[0],key);
  const R=(l,k)=>{const r=wn(k);if(!r)return'<div class="q"><b class="g">'+l+'</b><small>waiting for partner</small></div>';const t=r.w===0?"⏳ pending":r.w==="="?"🤝 Tie":"🏆 "+esc((r.w==="a"?d:o).name);return'<div class="q"><div class="g"><b>'+l+'</b><small>'+esc(d.name)+' '+r.a.pct+'% · '+esc(o.name)+' '+r.b.pct+'%</small></div><b>'+t+'</b></div>'};
  let h='<h3>'+si("star")+' Winners</h3><div class="card">'+R("Today",[key])+R("This week",weekKeys())+R("This year",yr);
  if(o){let wa=0,wb=0;yr.forEach(k=>{const r=wn([k]);if(r.w==="a")wa++;if(r.w==="b")wb++});
@@ -217,7 +241,7 @@ const CW=()=>cat(weekKeys()[0]),deal=k=>{const U=CW().U;return U[hs(k)%U.length]
 function findItem(p,d){const C=CW(),x=C.F.concat(C.U).find(z=>z[0]===p);if(x)return x;const o=(d.shop||[]).find(z=>z.i===p);return o?[p,o.e||o.n.split(" ")[0],o.n,0,0,1]:null}
 const wkMs=()=>new Date(weekKeys()[0]+"T00:00:00+05:30").getTime();
 function lockMsg(it,d,o){if(!it[5])return"";const L=lvl(lifeXp(d));if(L<it[5])return"Reach Level "+it[5]+" (you are "+L+")";
- const t=it[4];if(t>=2){const P=stats(uid,d,o,Object.keys(d.days||{})).perfect,n=t===2?2:4;if(P<n)return"Needs "+n+" perfect days (you have "+P+")"}
+ const t=it[4];if(t>=2){const P=stats(uid,d,o,Object.keys(Object.assign({},d.days,d.st))).perfect,n=t===2?2:4;if(P<n)return"Needs "+n+" perfect days (you have "+P+")"}
  if(t===3){const c=combos(d,o,allK(d,o));if(c<5)return"Needs 5 couple combos (you have "+c+")"}
  if(it[0][0]==="u"&&(d.shop||[]).filter(x=>x.i===it[0]&&x.t>=wkMs()).length>=2)return"Weekly limit reached (2)";return""}
 function vShop(){const{key}=now5(),d=me(),[oid,o]=other(),b=bal(d,o),C=CW(),dl=C.U.find(x=>x[0]===deal(key))||C.U[0];
@@ -252,7 +276,20 @@ function moodCard(d,o){const key=now5().key,mine=d.mood&&d.mood.k===key?d.mood.i
  return'<h3>🌈 How am I feeling today?</h3><div class="card"><div class="sub">Tick your mood, your partner sees it instantly.</div><div class="mg">'+MOODS.map((x,i)=>'<button class="'+(mine===i?"on":"")+'" data-a="fm" data-p="'+i+'"><b>'+x[0]+'</b>'+x[1]+(mine===i?" ✓":"")+'</button>').join("")+'</div>'
  +(o?'<div class="bub" style="margin:10px 0 0">'+(om?esc(o.name)+' is feeling '+MOODS[om.i][0]+' <b>'+MOODS[om.i][1]+'</b> · '+ago(om.t)+([4,5,6,7,8].includes(om.i)?'<br><span class="sub">A little care goes a long way 💛</span><br>'+B("rx","Send a hug 🤗","1","gh"):""):esc(o.name)+' hasn’t shared a mood yet today')+'</div>':'')+'</div>'}
 const ntf=(t,b)=>{if(document.visibilityState==="visible")toast(t+" "+b);if(window.Notification&&Notification.permission==="granted"&&navigator.serviceWorker)navigator.serviceWorker.ready.then(r=>r.showNotification(t,{body:b,icon:"icon-192.png",tag:"tg-"+t})).catch(()=>{})};
-function watch(){const[oid,o]=other();if(o&&o.msg&&Date.now()-o.msg.ts<864e5&&o.msg.ts>(LS.get("tg_msgseen_"+oid)||0)){LS.set("tg_msgseen_"+oid,o.msg.ts);ntf("💌 "+o.name+" sent you a message",o.msg.t.slice(0,80))}if(!o||!o.mood||o.mood.k!==now5().key)return;const k="tg_mseen_"+oid;if(o.mood.t>(LS.get(k)||0)){LS.set(k,o.mood.t);ntf(o.name+" is feeling "+MOODS[o.mood.i][0],MOODS[o.mood.i][1])}}
+function watch(){const d=me(),[oid,o]=other();if(!d||!o)return;
+ if(o.msg&&live24(o.msg)){const k="tg_msgseen_"+oid;
+  if(!d.ak||d.ak.ts!==o.msg.ts){d.ak={ts:o.msg.ts,d:Date.now()};save()}
+  if(o.msg.ts>(LS.get(k)||0)){LS.set(k,o.msg.ts);ntf("💌 "+o.name+" sent you a message",o.msg.t.slice(0,80));showMsg(o)}}
+ if(o.rx&&Date.now()-o.rx.t<216e5&&o.rx.t>(LS.get("tg_rxseen_"+oid)||0)){LS.set("tg_rxseen_"+oid,o.rx.t);ntf(o.name+" sent you a "+["taunt 😜","cheer 🤗","kiss 😘"][o.rx.k],RX[o.rx.k][o.tpl])}
+ const nt=o.notes&&o.notes[now5().key];if(nt&&nt!==LS.get("tg_noteseen_"+oid)){LS.set("tg_noteseen_"+oid,nt);ntf("💌 "+o.name+" wrote you a love note",nt.slice(0,80))}
+ if(!o.mood||o.mood.k!==now5().key)return;const k="tg_mseen_"+oid;if(o.mood.t>(LS.get(k)||0)){LS.set(k,o.mood.t);ntf(o.name+" is feeling "+MOODS[o.mood.i][0],MOODS[o.mood.i][1])}}
+function showMsg(o){if($("#mo"))$("#mo").remove();const e=document.createElement("div");e.id="mo";
+ e.innerHTML='<div class="bx"><div style="font-size:48px">'+MC[o.msg.c][0]+'</div><h2 style="margin:6px 0">'+esc(o.name)+' sent you a message</h2><div class="say" style="margin:10px 0">“'+esc(o.msg.t)+'”</div><div class="sub">'+ago(o.msg.ts)+' · stays on Home for '+left(o.msg)+'</div><br><div class="row" style="justify-content:center">'+B("rx","Send a kiss 😘","2","alt")+B("mok","Got it 💗","","")+'</div></div>';document.body.appendChild(e);if(navigator.vibrate)navigator.vibrate([60,40,60])}
+function msgStatus(d,o){if(!live24(d.msg))return"";const a=o&&o.ak&&o.ak.ts===d.msg.ts?o.ak:null;
+ if(a&&a.s)return'<span style="color:#2fbf86">✓✓ Seen by '+esc(o.name)+' · '+ago(a.s)+'</span>';
+ if(a)return'<span style="color:#8b6cf0">✓✓ Delivered to '+esc(o.name)+'’s phone · '+ago(a.d)+'</span>';
+ if(LS.get("tg_dirty")||!online)return'<span style="color:#d93a85">⏳ Waiting for internet, will send automatically</span>';
+ return'<span>✓ Sent. '+esc(o.name||"Partner")+' gets it the moment they open the app</span>'}
 // ===== Start / invite / settings =====
 const CODE_RE=/^TOGETHER-[A-Z0-9]{8}$/;let code=LS.get("tg_code"),inst=null,online=navigator.onLine;
 const mkCode=()=>{const a="ABCDEFGHJKMNPQRSTUVWXYZ23456789";let r="";const u=crypto.getRandomValues(new Uint8Array(8));u.forEach(x=>r+=a[x%a.length]);return"TOGETHER-"+r};
@@ -267,6 +304,7 @@ function vSet(){const d=me(),[,o]=other(),std=matchMedia("(display-mode: standal
  +'<div class="card"><div class="ct">☁️ Sync</div><div class="sub">'+(online?"Online":"Offline")+' · '+(db?"Cloud connected":"Cloud not connected, data saved on this phone")+(LS.get("tg_dirty")?" · changes waiting to sync":"")+'</div><br>'+B("sync","Sync now","","gh")+'</div>'
  +'<div class="card"><div class="ct">🚪 Log out</div><div class="sub">Removes this phone’s login. Your data stays safe in the cloud, and you can come back with the code.</div><br>'+B("out","Log out of this phone","","gh")+'</div>'}
 Object.assign(A,{
+ async mok(){const e=$("#mo");if(e)e.remove();const d=me(),[,o]=other();if(d&&o&&o.msg){d.ak={ts:o.msg.ts,d:(d.ak&&d.ak.ts===o.msg.ts&&d.ak.d)||Date.now(),s:Date.now()};await save()}render()},
  async fm(p){const d=me();d.mood={k:now5().key,i:+p,t:Date.now()};toast("Mood shared ✓ "+MOODS[+p][0]);await save();render()},
  bday(){party(me().tpl==="A"?"B":"A",true)},tune(){tune()},close(){const e=$("#bd");if(e)e.remove()},ics(){ics()},
  mk(){code=mkCode();LS.set("tg_code",code);initSync();render()},
@@ -277,17 +315,17 @@ Object.assign(A,{
  async notif(){try{await Notification.requestPermission()}catch(e){}render()},
  snd(){LS.set("tg_snd",LS.get("tg_snd")===0?1:0);if(LS.get("tg_snd")!==0)tune();render()},
  sync(){flush();initSync();toast(online?"Syncing…":"You’re offline")},
- out(){if(confirm("Log out of this phone?")){["tg_code","tg_uid"].forEach(k=>localStorage.removeItem(k));location.reload()}},
- claim(p){const k=Object.keys(docs).find(z=>docs[z].tpl===p);if(!k)return;uid=k;LS.set("tg_uid",uid);render()}});
+ out(){if(confirm("Log out of this phone?")){["tg_code","tg_uid","tg_ok_A","tg_ok_B"].forEach(k=>localStorage.removeItem(k));location.reload()}},
+ async claim(p){if(!(await gate(p)))return;const k=Object.keys(docs).find(z=>docs[z].tpl===p);if(!k)return;uid=k;LS.set("tg_uid",uid);render()}});
 
 // ===== Name tag + paid messages =====
 const NICKP=800,MSGP=40,MSGC=80,MC={f:["😏","Flirty",FLIRT],l:["💞","Love",LOVE.concat(LOVE2)],y:["😂","Funny",FUN.concat(FUN2)]};let mq={c:"l",i:0};
 const nickOf=x=>{const d=me(),[,o]=other();return x===d?(o&&o.pn&&o.pn.t):(d.pn&&d.pn.t)},nickLine=x=>{const t=nickOf(x);return t?'<small style="font-weight:800;color:#d93a85">🏷️ “'+esc(t)+'”</small>':""};
 const live24=m=>m&&Date.now()-m.ts<864e5,left=m=>{const h=Math.max(1,Math.ceil((864e5-(Date.now()-m.ts))/36e5));return h+"h left"};
 function msgBanner(d,o){let h="";if(o&&live24(o.msg))h+='<div class="card" style="background:#fff4fa!important"><div class="sub">'+MC[o.msg.c][0]+' '+esc(o.name)+' sent you a '+MC[o.msg.c][1]+' message · '+ago(o.msg.ts)+' · '+left(o.msg)+'</div><div class="bq">“'+esc(o.msg.t)+'”</div></div>';
- if(live24(d.msg))h+='<div class="card"><div class="sub">Your message is live for '+left(d.msg)+'</div><div class="bq">“'+esc(d.msg.t)+'”</div></div>';return h}
+ if(live24(d.msg))h+='<div class="card"><div class="sub">Your message · '+left(d.msg)+'</div><div class="bq">“'+esc(d.msg.t)+'”</div><div class="sub" style="margin-top:4px">'+msgStatus(d,o)+'</div></div>';return h}
 function msgCard(){const d=me(),[,o]=other(),b=bal(d,o),c=MC[mq.c],q=c[2][mq.i%c[2].length];
- return'<div class="card"><div class="ct">💌 Send a message</div><div class="sub">Shows on your partner’s Home for 24 hours. Costs strawberries, you have '+b+' 🍓</div><div class="seg" style="margin-top:8px">'+Object.keys(MC).map(k=>'<button class="'+(mq.c===k?"on":"")+'" data-a="mcat" data-p="'+k+'">'+MC[k][0]+' '+MC[k][1]+'</button>').join("")+'</div><div class="say">“'+esc(q)+'”</div><br><div class="row">'+B("mshuf","🔀 Shuffle","","gh g")+B("msend","Send · "+MSGP+" 🍓","q","g")+'</div><br><textarea id="mt" rows="2" maxlength="120" placeholder="Or write your own message…"></textarea><br><br>'+B("msend","Send my own · "+MSGC+" 🍓","c","wide alt")+'</div>'}
+ return'<div class="card"><div class="ct">💌 Send a message</div>'+(live24(d.msg)?'<div class="sub" style="margin-bottom:6px">Last message: '+msgStatus(d,o)+'</div>':"")+'<div class="sub">Shows on your partner’s Home for 24 hours. Costs strawberries, you have '+b+' 🍓</div><div class="seg" style="margin-top:8px">'+Object.keys(MC).map(k=>'<button class="'+(mq.c===k?"on":"")+'" data-a="mcat" data-p="'+k+'">'+MC[k][0]+' '+MC[k][1]+'</button>').join("")+'</div><div class="say">“'+esc(q)+'”</div><br><div class="row">'+B("mshuf","🔀 Shuffle","","gh g")+B("msend","Send · "+MSGP+" 🍓","q","g")+'</div><br><textarea id="mt" rows="2" maxlength="120" placeholder="Or write your own message…"></textarea><br><br>'+B("msend","Send my own · "+MSGC+" 🍓","c","wide alt")+'</div>'}
 Object.assign(A,{
  mcat(p){mq={c:p,i:Math.floor(Math.random()*20)};render()},mshuf(){mq.i=Math.floor(Math.random()*50);render()},
  async msend(p){const d=me(),[,o]=other(),c=p==="c"?MSGC:MSGP,t=p==="c"?(($("#mt")||{}).value||"").trim().slice(0,120):MC[mq.c][2][mq.i%MC[mq.c][2].length];
@@ -313,6 +351,16 @@ window.TG={award,status,uni,lvl,dt,now5,cat,bdInfo,lockMsg};
  uid=LS.get("tg_uid")||("l"+Date.now().toString(36)+Math.random().toString(36).slice(2,5));LS.set("tg_uid",uid);
  const loc=LS.get("tg_"+uid);if(loc)docs[uid]=loc;ready=!!loc;
  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
- try{navigator.serviceWorker&&navigator.serviceWorker.register("sw.js")}catch(e){}
+ try{if(navigator.serviceWorker){let had=!!navigator.serviceWorker.controller,rl=0;navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!had){had=true;return}if(rl)return;rl=1;const go=()=>{const a=document.activeElement;if(a&&/INPUT|TEXTAREA/.test(a.tagName))return setTimeout(go,4000);location.reload()};go()});
+  navigator.serviceWorker.register("sw.js").then(r=>{const u=()=>r.update().catch(()=>{});setInterval(u,18e5);document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")u()})}).catch(()=>{})}}catch(e){}
  banner();await initSync();setTimeout(()=>{if(!ready){ready=true;render()}},6000);if(!code||ready)ready=true;
  setInterval(render,30000);render();setTimeout(()=>{const t=me()&&["A","B"].find(x=>bdInfo(x).today);if(t)party(t);if(me())bdNotify()},800)})();
+
+// ===== Native app feel =====
+(()=>{const inp=t=>/^(INPUT|TEXTAREA)$/.test(t.tagName||"");
+ document.addEventListener("contextmenu",e=>{if(!inp(e.target))e.preventDefault()});
+ document.addEventListener("dragstart",e=>e.preventDefault());
+ ["gesturestart","gesturechange","gestureend"].forEach(t=>document.addEventListener(t,e=>e.preventDefault()));
+ document.addEventListener("keydown",e=>{if(e.key==="F5"||((e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==="r"))e.preventDefault()});
+ document.addEventListener("click",e=>{if(e.target.closest&&e.target.closest("button")&&navigator.vibrate)try{navigator.vibrate(8)}catch(x){}},true);
+ history.replaceState({t:tab},"");addEventListener("popstate",e=>{tab=(e.state&&e.state.t)||"home";render();scrollTo(0,0)})})();
