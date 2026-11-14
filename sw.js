@@ -1,4 +1,4 @@
-const V="tg-v3",CORE=["./","index.html","style.css","app.js","manifest.json","firebase-config.js","icon-192.png","icon-512.png"];
+const V="tg-v4",CORE=["./","index.html","style.css","app.js","manifest.json","firebase-config.js","icon-192.png","icon-512.png"];
 // Files that change on every deploy: always try the network first, fall back to cache when offline.
 const FRESH=["app.js","style.css","firebase-config.js","manifest.json","index.html","sw.js"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(CORE.map(u=>new Request(u,{cache:"reload"})))).then(()=>self.skipWaiting()))});
