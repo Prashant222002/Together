@@ -171,7 +171,7 @@ function vRt0(){const{key,m}=now5(),d=me(),[oid,o]=other(),v=rv==="other"&&o?o:d
 function vUs0(){const{key,m}=now5(),d=me(),[oid,o]=other(),keys=weekKeys(),a=stats(uid,d,o,keys),b=o?stats(oid,o,d,keys):null,cb=combos(d,o,keys),t=o?Math.round((a.pct+b.pct)/2):0,wk=keys[0];
  let h=hd("Together","unicorn")+'<img class="ph" style="margin-bottom:10px;max-height:150px;object-fit:cover" src="'+S.hands+'" alt="">'+'<div class="card c"><div class="ct">'+si("captain")+' Couple Missions</div><div class="sub" style="margin-bottom:6px">Complete them together for COMBO bonus!</div>';
  M.forEach(q=>{const x=d.mc&&d.mc[key]&&d.mc[key][q.i],y=o&&o.mc&&o.mc[key]&&o.mc[key][q.i];
-  const act=x?'<span class="xp">'+(y?"COMBO +20":"waiting…")+'</span>':(m>=q.s&&m<=q.e+30?B("mc","Done"):'<span class="tag">'+hm(q.s)+'</span>');
+  const act=x?'<span class="xp">'+(y?"COMBO +20":"waiting…")+'</span>':(m>=q.s&&m<=q.e+30?B("mc","Done",q.i):'<span class="tag">'+hm(q.s)+'</span>');
   h+='<div class="q" style="text-align:left"><span class="ck '+(x&&y?"d":"")+'">'+(x&&y?"✓":"")+'</span><div class="g"><b style="font-size:15px">'+q.n+'</b><small>you '+(x?"✓":"○")+' · '+(o?esc(o.name):"partner")+' '+(y?"✓":"○")+'</small></div>'+act+'</div>'});
  h+='</div><div class="ms"><span class="e">'+si("captain","big")+'</span><b class="g">Couple Streak</b><b>'+Math.min(a.perfect,b?b.perfect:0)+' Days</b></div>';
  h+='<div class="card"><div class="ch"><b style="font-size:18px">'+si("rose")+' Our Garden</b><span class="tag">'+cb+' combos</span></div><img class="ph" style="margin:8px 0;max-height:150px;object-fit:cover" src="'+S.garden+'" alt=""><div class="bar t"><i style="width:'+Math.max(5,t)+'%"></i></div><div class="sub">Team score '+t+'% · grow it together!</div></div>';
