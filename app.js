@@ -434,7 +434,7 @@ function xHome(d,o,key,m){let h="";const X=d.x||{},w=dhw(key),L=qs(d,key);
  h+=t3.map(id=>{const q=L.find(z=>z.i===id);if(!q)return"";const c=clOf(d,key,q);return'<div class="q'+(c?" done":"")+'"><span class="ic">'+qi(q.n)+'</span><div class="g"><b>'+esc(q.n)+'</b><small>'+hm(q.s)+' – '+hm(q.e)+'</small></div><span class="'+(c?"ck d":"ck")+'">'+(c?"✓":"")+'</span></div>'}).join("");
  if(t3.length)h+='<div class="sub c">'+dn+'/3 done'+(got3?' · bonus collected ✓':'')+'</div>';
  if(t3.length<3||dn<t3.length){const ch=L.filter(q=>t3.includes(q.i)?!clOf(d,key,q):(!clOf(d,key,q)&&q.e>=m));
-  if(ch.length)h+='<div class="row" style="flex-wrap:wrap;gap:6px;margin-top:8px">'+ch.map(q=>B("t3t",esc(q.n.slice(0,16)),q.i,t3.includes(q.i)?"alt":"gh g")).join("")+'</div>';
+  if(ch.length)h+='<div class="t3ch">'+ch.map(q=>B("t3t",(t3.includes(q.i)?"✓ ":"")+esc(q.n),q.i,t3.includes(q.i)?"alt":"gh")).join("")+'</div>';
   if(!t3.length)h+='<br>'+B("t3a","Auto-pick best 3","","gh")}
  h+='</div>';
  if(o)h+=bossCard(d,o);
